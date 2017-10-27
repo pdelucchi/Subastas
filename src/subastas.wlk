@@ -40,9 +40,49 @@ class Subasta{
 	method ofertas(){
 		return listaOfertas
 	}
-	
+	method articulo(){
+		return articulo
+	}
+	method mejorOfertaSubasta(){
+		return mejorOfertaExistente
+	}
 	
 }
+class SubastaEspecial inherits Subasta{
+	var cantMaxOfertas
+	var ofertasRecibidas = 0
+	constructor(nombreVendedor,articuloAVender,precioDeBase,diaFinalizacion,mesFinalizacion,anioFinalizacion,cantOfertas) = super(nombreVendedor,articuloAVender,precioDeBase,diaFinalizacion,mesFinalizacion,anioFinalizacion){
+		cantMaxOfertas = cantOfertas
+		}
+	override method recibirOfertaDe(unaOferta){
+		if (super(unaOferta) && unaOferta.antiguedadOferente()>2 && unaOferta.oferenteGanador() ){
+			listaOfertas.add(unaOferta)
+			mejorOfertaExistente = unaOferta.monto()
+			ofertasRecibidas += 1
+		if (ofertasRecibidas>=	cantMaxOfertas){
+			self.cerrarSubastasA(fechaFinalizacion)
+			}
+		}
+	}
+	
+}
+
+class SubastaRapida inherits Subasta{
+	var montoAAlcanzar
+	constructor(nombreVendedor,articuloAVender,precioDeBase,diaFinalizacion,mesFinalizacion,anioFinalizacion,monto) = super(nombreVendedor,articuloAVender,precioDeBase,diaFinalizacion,mesFinalizacion,anioFinalizacion){
+		montoAAlcanzar = monto
+		}
+		override method recibirOfertaDe(unaOferta){
+		if (super(unaOferta) ){
+			listaOfertas.add(unaOferta)
+			mejorOfertaExistente = unaOferta.monto()
+		if (mejorOfertaExistente >=	montoAAlcanzar){
+			self.cerrarSubastasA(fechaFinalizacion)
+			}
+		}
+	}
+}
+	
 	class EstadoSubastaAbierta{
 	method cerrarSubasta(subasta,fecha){
 		if (subasta.fechaFinalizacion() >= fecha){
@@ -50,6 +90,7 @@ class Subasta{
 			subasta.cobrarAVendedor()
 			subasta.obtenerOferenteGanador(subasta).sumar1AContadorDeSubastasGanadas()
 			subasta.obtenerOferentes().map({oferta => oferta.sumar1AContadorDeSubastasParticipadas()})
+			subastasCerradas.agregarSubastaCerrada(subasta)
 			}
 	}
 	method estaAbierta(){
@@ -74,28 +115,18 @@ class Subasta{
 	
 }
 	
-
-/*
-	method cerrarSubastasA(unaFecha){
-		if (unaFecha > fechaFinalizacion){
-			subastaAbierta = false	
-			self.cobrarAVendedor()
-		}
+object subastasCerradas{
+	var listaSubastasCerradas = []
+	method agregarSubastaCerrada(subasta){
+		listaSubastasCerradas.add(subasta)
 	}
-	  
-	method obtenerOferentes(){
-		listaOfertas.map({oferta => oferta.oferente()})
+	method precioPromedioDe(unProducto){
+		var listaSubastasCerradasPorArticulo
+		listaSubastasCerradasPorArticulo = listaSubastasCerradas.filter({subasta => subasta.articulo() == unProducto})
+		return listaSubastasCerradasPorArticulo.sum({subasta => subasta.mejorOfertaSubasta()})/listaSubastasCerradas.size()
 	}
-	method esGanador(usuario){
-		if (!subastaAbierta){
-			listaOfertas.filter()
-		}
-	}
-}
-	
+}	
 
-
-*/
 class Oferta{
 	var oferente
 	var monto
@@ -117,17 +148,23 @@ class Oferta{
 	method sumar1AContadorDeSubastasParticipadas(){
 		oferente.sumar1aContadorDeSubastasGanadas()
 	}
+	method antiguedadOferente(){
+		return oferente.antiguedad()
+	}
+	method oferenteGanador(){
+		return oferente.ganoAlMenosUnaVez()
+	}
 }
-
-
 
 class Usuario{
 	var nombre
 	var deuda
 	var contadorSubastasGanadas = 0
 	var contadorSubastasQueParticipo = 0
-	constructor(nombreVendedor){
+	var antiguedad
+	constructor(nombreVendedor,aantiguedad){
 		nombre = nombreVendedor
+		antiguedad = aantiguedad
 		}
 	method modificarDeuda(deudaAIncrementar){
 		deuda += deudaAIncrementar
@@ -142,8 +179,15 @@ class Usuario{
 	method esGanador(subasta){
 		return subasta.obtenerOferenteGanador() == self
 	}
-	method esLooser(){
+	method esLoser(){
 		return contadorSubastasGanadas<=0 and contadorSubastasQueParticipo>=1
+	}
+	method antiguedad(){
+		return antiguedad
+	}
+	method ganoAlMenosUnaVez(){
+		return contadorSubastasGanadas>=1
+			
 	}
 }
 
